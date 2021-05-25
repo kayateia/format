@@ -21,7 +21,8 @@
 </style>
 
 <script lang="ts">
-import Nav from '@/components/Nav.vue'; // @ is an alias to /src
+
+import Nav from "@/components/Nav.vue"; // @ is an alias to /src
 import { Component, Vue } from 'vue-property-decorator';
 
 @Component({
@@ -30,4 +31,5 @@ import { Component, Vue } from 'vue-property-decorator';
   },
 })
 export default class App extends Vue { }
+
 </script>
