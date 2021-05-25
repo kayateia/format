@@ -3,13 +3,13 @@
 // Please see README.md in the root of this project for licence info.
 //
 
-@import "../../node_modules/bootstrap/scss/functions";
-
 $body-bg: #2c3e50;
 $body-color: #a0a0a0;
-
-/* $theme-colors: (
-    "info": "#7f4f7f"
-);*/
+$enable-shadows: true;
+$enable-gradients: true;
 
 @import "../../node_modules/bootstrap/scss/bootstrap";
+
+/*$theme-colors: (
+    "navbg": "#7f4f7f"
+);*/
