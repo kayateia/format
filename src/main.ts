@@ -13,6 +13,8 @@ import { BootstrapVue, IconsPlugin } from "bootstrap-vue";
 import "./scss/custom.scss";
 import "bootstrap-vue/dist/bootstrap-vue.css";
 
+import "../node_modules/matrix-js-sdk/dist/browser-matrix";
+
 Vue.use(BootstrapVue);
 Vue.use(IconsPlugin);
 
