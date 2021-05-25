@@ -1,3 +1,8 @@
+//
+// Copyright (c) 2021 Kayateia
+// Please see README.md in the root of this project for licence info.
+//
+
 /* eslint-disable no-console */
 
 import { register } from 'register-service-worker'

@@ -1,3 +1,10 @@
+<!--
+//
+// Copyright (c) 2021 Kayateia
+// Please see README.md in the root of this project for licence info.
+//
+-->
+
 <template>
   <div class="hello">
     <h1>{{ msg }}</h1>
