@@ -7,6 +7,26 @@ import { Category } from "./category";
 import { Homeserver } from "./homeserver";
 import { Topic } from "./topic";
 import { User } from "./user";
+import { Post } from "./post";
+
+// Would love EventEmitter...
+export interface UpdatedState<T> {
+    (t: T, state: State): void;
+}
+export class UpdateEmitter<T> {
+    cbs: UpdatedState<T>[] = [];
+
+    constructor() {}
+
+    onUpdate(callback: UpdatedState<T>) {
+        this.cbs.push(callback);
+    }
+
+    // For State only.
+    emitUpdate(t: T) {
+        this.cbs.forEach(c => c(t, currentState));
+    }
+}
 
 export class State {
     // The Matrix server we're attached directly to.
@@ -28,6 +48,15 @@ export class State {
     // List of topics that we know/care about.
     private topics_ = new Map<string, Topic>();
     private topicsUpdated_ = new UpdateEmitter<string[]>();
+
+    // List of posts that we know/care about.
+    private posts_ = new Map<string, Post>();
+    private postsUpdated_ = new UpdateEmitter<string[]>();
+
+    // List of posts that are queued for sending.
+    // Generally this list is mutually exclusive with posts_.
+    private postQueue_ = [] as Post[];
+    private postQueueUpdated_ = new UpdateEmitter<void>();
 
     get homeserver() { return this.homeserver_; }
     setHomeserver(server: Homeserver) {
@@ -61,6 +90,9 @@ export class State {
     get categories() {
         return [...this.categories_.values()];
     }
+    getCategory(id: string): Category | undefined {
+        return this.categories_.get(id);
+    }
     setCategories(categories: Category[]): void {
         for (const c of categories) {
             this.categories_.set(c.roomId, c);
@@ -72,33 +104,44 @@ export class State {
     get topics() {
         return [...this.topics_.values()];
     }
+    getTopic(id: string): Topic | undefined {
+        return this.topics_.get(id);
+    }
     setTopics(topics: Topic[]): void {
         for (const t of topics) {
-            this.topics_.set(t.threadId, t);
+            this.topics_.set(t.topicId, t);
         }
-        this.topicsUpdated_.emitUpdate(topics.map(t => t.threadId));
+        this.topicsUpdated_.emitUpdate(topics.map(t => t.topicId));
     }
     get topicsUpdated() { return this.topicsUpdated_; }
+
+    getPostsByTopic(topicId: string): Post[] {
+        return Array.from(this.posts_.values()).filter(p => p.contents.topicId === topicId);
+    }
+    setPosts(posts: Post[]): void {
+        if (posts.filter(p => !p.postId).length) {
+            throw new Error("Posts must have a postId by here");
+        }
+        for (const p of posts) {
+            this.posts_.set(p.postId!, p);
+        }
+        this.postsUpdated_.emitUpdate(posts.map(p => p.postId!));
+    }
+    get postsUpdated() { return this.postsUpdated_; }
+
+    getAndClearPostQueue(): Post[] {
+        const posts = this.postQueue_;
+        this.postQueue_ = [];
+        return posts;
+    }
+    queuePostsForSend(posts: Post[]): void {
+        this.postQueue_.push(...posts);
+        this.postQueueUpdated_.emitUpdate();
+    }
+    get postQueueUpdated() { return this.postQueueUpdated_; }
 }
 
 // The current state of the app.
 const currentState = new State();
-
-// Would love EventEmitter...
-export interface UpdatedState<T> {
-    (t: T, state: State): void;
-}
-class UpdateEmitter<T> {
-    cbs: UpdatedState<T>[] = [];
-
-    onUpdate(callback: UpdatedState<T>) {
-        this.cbs.push(callback);
-    }
-
-    // For State only.
-    emitUpdate(t: T) {
-        this.cbs.forEach(c => c(t, currentState));
-    }
-}
 
 export const current = () => currentState;

@@ -10,17 +10,17 @@ import { v4 as v4uuid } from "uuid";
 export class Topic {
     private categoryId_: string;
     private title_: string;
-    private threadId_: string;
+    private topicId_: string;
 
-    constructor(category: Category, title: string, threadId: string) {
+    constructor(category: Category, title: string, topicId: string) {
         this.categoryId_ = category.roomId;
         this.title_ = title;
-        this.threadId_ = threadId;
+        this.topicId_ = topicId;
     }
 
     get categoryId() { return this.categoryId_; }
     get title() { return this.title_; }
-    get threadId() { return this.threadId_; }
+    get topicId() { return this.topicId_; }
 }
 
 export function newTopicId(): string {

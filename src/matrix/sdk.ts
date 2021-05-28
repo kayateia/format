@@ -7,8 +7,10 @@ import sdk from "matrix-js-sdk";
 
 // Hopefully they will eventually export this.
 import { EventType } from "matrix-js-sdk/src/@types/event";
+export * from "matrix-js-sdk/src/@types/event";
 
 import { State, current as currentState, Homeserver, User } from "../model";
+import * as Updaters from "./updaters";
 
 export class Matrix {
     // There's no typing for this currently.
@@ -82,21 +84,50 @@ export class Matrix {
         const login = {
             baseUrl: url,
             accessToken: user.accessToken,
-            userId: "user"
+            userId: user.login
         };
+        console.log("login:", login);
         const client = sdk.createClient(login);
+        console.log("client:", client);
 
         // client.initCrypto();
         await client.startClient();
+
+        console.log("client started!");
+
         this.client_ = client;
 
+        console.log("starting sync");
         client.once("sync", (state:string , prevState: string, res: any) => {
-        });
-
-        client.on("Room.timeline", (event: any, room: any, toStartOfTimeline: any) => {
-            if (event.getType() === EventType.RoomMessage) {
-                console.log("Got message:", event.getContents());
+            try {
+                Updaters.syncComplete(state);
+            } catch (e) {
+                console.error("Error during sync callback", e);
             }
         });
+
+        console.log("hooking timeline events");
+        client.on("Room.timeline", async (event: any, room: any, toStartOfTimeline: any) => {
+            try {
+                await Updaters.roomMessage(client, event, room, toStartOfTimeline);
+            } catch (e) {
+                console.log("Error during timeline callback", e);
+            }
+        });
+
+        console.log("processing queued posts");
+        const state = currentState();
+        const poster = async () => {
+            const posts = state.getAndClearPostQueue();
+            try {
+                await Updaters.sendQueuedPosts(client, posts);
+            } catch (e) {
+                console.error("Error during post callback", e);
+                // This needs some better idempotent state management.
+                // state.queuePostsForSend(posts);
+            }
+        };
+        await poster();
+        state.postQueueUpdated.onUpdate(poster);
     }
 }

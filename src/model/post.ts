@@ -3,73 +3,110 @@
 // Please see README.md in the root of this project for licence info.
 //
 
-import { Topic } from "./topic";
-import { v4 as v4uuid } from "uuid";
+/*
+
+This is a little complicated (tbd) because topics are technically just posts
+with the topic title as the post body. All subsequent (actual) posts to that
+topic will have a "reply to" parent in Matrix of the topic post, or another
+post in the same topic.
+
+*/
 
 export class PostContents {
-    private id_: string;
+    // The Matrix timeline event ID that represents the topic header.
+    // This is included in the serialized data to avoid needing to crawl all
+    // the way back to the original topic to get its title and other info.
     private topicId_: string;
-    private body_: string;
-    private parentId_: string | undefined;
 
-    constructor(id: string, topicId: string, body: string, parentId?: string) {
-        this.id_ = id;
+    // The body of this post. This should always contain a plaintext version of the post.
+    private body_: string;
+
+    // The HTML body of this post. This may be missing, or it may have a simplified HTML
+    // representation of the post, matching the Matrix specs. This is pulled into the
+    // serialized data so that it can be more extensible later without an MSC.
+    private bodyHtml_?: string;
+
+    constructor(topicId: string, body: string, bodyHtml?: string) {
         this.topicId_ = topicId;
         this.body_ = body;
-        this.parentId_ = this.parentId_;
+        this.bodyHtml_ = bodyHtml;
     }
 
-    get id() { return this.id_; }
     get topicId() { return this.topicId_; }
     get body() { return this.body_; }
-    get parentId() { return this.parentId_; }
+    get bodyHtml() { return this.bodyHtml_; }
 }
 
 // We will post literal JSON of this to Matrix in the matching Category room.
 export interface SerializedPost {
-    id: string;
+    version: string;
     topicId: string;
-    parentId?: string;
     body: string;
+    bodyHtml?: string;
+}
+
+export interface PostArgs {
+    postId?: string;
+    parentId?: string;
+    author: string;
+    contents: PostContents | string;
 }
 
 // Represents information about a post on a topic.
 export class Post {
-    private topicId_: string;
+    // May be undefined if it hasn't been sent.
+    private postId_: string | undefined;
+    private parentId_: string | undefined;
     private authorId_: string;
     private contents_: PostContents;
 
-    constructor(topic: Topic | string, author: string, contents: PostContents | string) {
-        if (typeof topic === "string") {
-            this.topicId_ = topic;
-        } else {
-            this.topicId_ = topic.threadId;
-        }
+    constructor(args: PostArgs) {
+        this.postId_ = args.postId;
+        this.parentId_ = args.parentId;
+        this.authorId_ = args.author;
 
-        this.authorId_ = author;
-
-        if (typeof contents === "string") {
-            const json: SerializedPost = JSON.parse(contents);
-            this.contents_ = new PostContents(json.id, json.topicId, json.body, json.parentId);
+        if (typeof args.contents === "string") {
+            const json: SerializedPost = JSON.parse(args.contents);
+            this.contents_ = new PostContents(json.topicId, json.body, json.bodyHtml);
         } else {
-            this.contents_ = contents;
+            this.contents_ = args.contents;
         }
     }
 
-    get topicId() { return this.topicId_; }
+    get postId() { return this.postId_; }
+    get parentId() { return this.parentId_; }
     get authorId() { return this.authorId_; }
     get contents() { return this.contents_; }
 
     get serialized() {
         return {
-            id: this.contents_.id,
+            version: "fmt1",
             topicId: this.contents.topicId,
             body: this.contents_.body,
-            parentId: this.contents_.parentId
+            bodyHtml: this.contents_.bodyHtml
         } as SerializedPost;
     }
-}
 
-export function newPostId(): string {
-    return `fmtpost-${v4uuid()}`;
+    static parse(serialized: string, id: string, author: string, parentId?: string): Post | undefined {
+        let json: SerializedPost;
+        try {
+            json = JSON.parse(serialized);
+        } catch (e) {
+            throw new Error(`Couldn't convert from JSON: ${serialized}`);
+        }
+        if (!json.version) {
+            // For now this is just a yes/no flag. In the future, the serialized
+            // data structure might need to rev, and we will deal with shimming
+            // other formats (heh) here.
+            return undefined;
+        }
+        return new Post({
+            postId: id,
+            parentId,
+            author,
+            contents: new PostContents(
+                json.topicId, json.body, json.bodyHtml
+            )
+        });
+    }
 }
