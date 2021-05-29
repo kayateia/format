@@ -5,7 +5,7 @@
 
 // This bridges from the SDK callbacks to updating our State.
 
-import { State, current as currentState, Post, PostContents } from "../model";
+import { State, current as currentState, Post, PostContents, Topic } from "../model";
 import { EventType } from "./sdk";
 
 export function syncComplete(stateCode: string) {
@@ -14,18 +14,36 @@ export function syncComplete(stateCode: string) {
 
 export function roomMessage(client: any, event: any, room: any, toStartOfTimeline: boolean) {
     console.log("received timeline event:", event, room, toStartOfTimeline);
-    if (event.getType() === EventType.RoomMessage && event.getContent().msgtype === "m.fmtpost") {
-        if (event.getContent().body[0] === "!") {
-            const body = `I repeat! ${event.getContent().body}`;
-            const content = {
-                body,
-                msgtype: "m.fmtpost",
-            };
+    if (event.getType() === EventType.RoomMessage) {
+        const state = currentState();
 
-            /* await */ client.sendEvent(room.roomId, "m.room.message", content, "");
+        // Is it one of ours?
+        const content = event.getContent();
+        const body = content.body;
+        if (!Post.isOurs(body)) {
+            return;
         }
 
-        console.log("Got message:", event.getContent());
+        // Topic or post?
+        const parentId = content["m.relates_to"]?.["m.in_reply_to"]?.event_id;
+        if (parentId) {
+            // Post.
+            const post = Post.parse(body, event.getId(), event.getSender(), parentId);
+            if (post) {
+                console.log("Got post:", post);
+                state.setPosts([post]);
+            } else {
+                console.log("Can't parse post, after all:", post);
+            }
+        } else {
+            // Topic header.
+            const post = Post.parse(body, event.getId(), event.getSender());
+            if (post) {
+                const topic = new Topic(room.roomId, post.contents.body, post.postId)
+                console.log("Got topic:", topic);
+                state.setTopics([topic]);
+            }
+        }
     }
 }
 
@@ -78,7 +96,7 @@ export async function sendQueuedPosts(client: any, posts: Post[]): Promise<void>
             body: `> <@a:b.c> --elided--\n${body}`,
             format: "org.matrix.custom.html",
             formatted_body: `<mx-reply></mx-reply>\n${body}`,
-            "m.relates.to": {
+            "m.relates_to": {
                 "m.in_reply_to": {
                     event_id: p.parentId
                 }

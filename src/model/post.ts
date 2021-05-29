@@ -133,9 +133,31 @@ export class Post {
         } as SerializedPost;
     }
 
+    static isOurs(serialized: string): boolean {
+        let json: SerializedPost;
+        try {
+            // Skip any quote line we were forced to put in.
+            const skip = serialized.lastIndexOf("\n");
+            if (skip > 0) {
+                serialized = serialized.substr(skip + 1);
+            }
+
+            json = JSON.parse(serialized);
+            return json?.version === "fmt1";
+        } catch (e) {
+            return false;
+        }
+    }
+
     static parse(serialized: string, id: string, author: string, parentId?: string): Post | undefined {
         let json: SerializedPost;
         try {
+            // Skip any quote line we were forced to put in.
+            const skip = serialized.lastIndexOf("\n");
+            if (skip > 0) {
+                serialized = serialized.substr(skip + 1);
+            }
+
             json = JSON.parse(serialized);
         } catch (e) {
             throw new Error(`Couldn't convert from JSON: ${serialized}`);
