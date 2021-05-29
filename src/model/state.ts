@@ -54,7 +54,10 @@ export class State {
     private postsUpdated_ = new UpdateEmitter<string[]>();
 
     // List of posts that are queued for sending.
-    // Generally this list is mutually exclusive with posts_.
+    //
+    // Generally this list is mutually exclusive with posts_. Everything
+    // in here won't have IDs yet, and may contain unposted topic headers.
+    // Everything in posts_ and topics_ *will* have IDs.
     private postQueue_ = [] as Post[];
     private postQueueUpdated_ = new UpdateEmitter<void>();
 
@@ -108,10 +111,13 @@ export class State {
         return this.topics_.get(id);
     }
     setTopics(topics: Topic[]): void {
-        for (const t of topics) {
-            this.topics_.set(t.topicId, t);
+        if (topics.filter(t => !t.topicId).length > 0) {
+            throw new Error(`Unable to set topics, as some have no ID: ${JSON.stringify(topics, null, 4)}`);
         }
-        this.topicsUpdated_.emitUpdate(topics.map(t => t.topicId));
+        for (const t of topics) {
+            this.topics_.set(t.topicId!, t);
+        }
+        this.topicsUpdated_.emitUpdate(topics.map(t => t.topicId!));
     }
     get topicsUpdated() { return this.topicsUpdated_; }
 
@@ -119,8 +125,8 @@ export class State {
         return Array.from(this.posts_.values()).filter(p => p.contents.topicId === topicId);
     }
     setPosts(posts: Post[]): void {
-        if (posts.filter(p => !p.postId).length) {
-            throw new Error("Posts must have a postId by here");
+        if (posts.filter(p => !p.postId).length > 0) {
+            throw new Error(`Unable to set posts, as some have no ID: ${JSON.stringify(posts, null, 4)}`);
         }
         for (const p of posts) {
             this.posts_.set(p.postId!, p);
@@ -143,5 +149,8 @@ export class State {
 
 // The current state of the app.
 const currentState = new State();
+if (window) {
+    (window as any).currentState = currentState;
+}
 
 export const current = () => currentState;

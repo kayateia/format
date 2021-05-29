@@ -3,6 +3,8 @@
 // Please see README.md in the root of this project for licence info.
 //
 
+import { Topic } from "./topic";
+
 /*
 
 This is a little complicated (tbd) because topics are technically just posts
@@ -16,7 +18,8 @@ export class PostContents {
     // The Matrix timeline event ID that represents the topic header.
     // This is included in the serialized data to avoid needing to crawl all
     // the way back to the original topic to get its title and other info.
-    private topicId_: string;
+    // Topic header posts won't have a value here.
+    private topicId_: string | undefined;
 
     // The body of this post. This should always contain a plaintext version of the post.
     private body_: string;
@@ -26,7 +29,7 @@ export class PostContents {
     // serialized data so that it can be more extensible later without an MSC.
     private bodyHtml_?: string;
 
-    constructor(topicId: string, body: string, bodyHtml?: string) {
+    constructor(body: string, topicId?: string, bodyHtml?: string) {
         this.topicId_ = topicId;
         this.body_ = body;
         this.bodyHtml_ = bodyHtml;
@@ -40,7 +43,7 @@ export class PostContents {
 // We will post literal JSON of this to Matrix in the matching Category room.
 export interface SerializedPost {
     version: string;
-    topicId: string;
+    topicId?: string;
     body: string;
     bodyHtml?: string;
 }
@@ -48,6 +51,7 @@ export interface SerializedPost {
 export interface PostArgs {
     postId?: string;
     parentId?: string;
+    pendingTopic?: Topic;
     author: string;
     contents: PostContents | string;
 }
@@ -56,25 +60,67 @@ export interface PostArgs {
 export class Post {
     // May be undefined if it hasn't been sent.
     private postId_: string | undefined;
+
+    // May be undefined if its topic header hasn't been posted. In
+    // that case, pendingTopic_ will be set instead.
     private parentId_: string | undefined;
+    private pendingTopic_: Topic | undefined;
+
     private authorId_: string;
     private contents_: PostContents;
 
     constructor(args: PostArgs) {
         this.postId_ = args.postId;
         this.parentId_ = args.parentId;
+        this.pendingTopic_ = args.pendingTopic;
         this.authorId_ = args.author;
 
         if (typeof args.contents === "string") {
             const json: SerializedPost = JSON.parse(args.contents);
-            this.contents_ = new PostContents(json.topicId, json.body, json.bodyHtml);
+            this.contents_ = new PostContents(json.body, json.topicId, json.bodyHtml);
         } else {
             this.contents_ = args.contents;
         }
     }
 
+    // Returns a new Post representing the pending topic header.
+    pendingTopicHeader(): Post {
+        if (!this.pendingTopic_) {
+            throw new Error("Can't make a pending topic header due to no pending topic.");
+        }
+        return new Post({
+            author: this.authorId_,
+            contents: new PostContents(this.pendingTopic_.title)
+        });
+    }
+
+    // Returns a new copy of the Post with a topic ID filled in, and no longer pending.
+    withTopicId(topicId: string): Post {
+        return new Post({
+            postId: this.postId_,
+            parentId: topicId,
+            author: this.authorId_,
+            contents: new PostContents(
+                this.contents_.body,
+                topicId,
+                this.contents_.bodyHtml
+            )
+        });
+    }
+
+    // Returns a new copy of the Post with its ID filled in.
+    withId(postId: string): Post {
+        return new Post({
+            postId,
+            parentId: this.parentId_,
+            author: this.authorId_,
+            contents: this.contents_
+        });
+    }
+
     get postId() { return this.postId_; }
     get parentId() { return this.parentId_; }
+    get pendingTopic() { return this.pendingTopic_; }
     get authorId() { return this.authorId_; }
     get contents() { return this.contents_; }
 
@@ -105,7 +151,7 @@ export class Post {
             parentId,
             author,
             contents: new PostContents(
-                json.topicId, json.body, json.bodyHtml
+                json.body, json.topicId, json.bodyHtml
             )
         });
     }
