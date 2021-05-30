@@ -27,8 +27,8 @@ export function roomMessage(client: any, event: any, room: any, toStartOfTimelin
         // Topic or post?
         const parentId = content["m.relates_to"]?.["m.in_reply_to"]?.event_id;
         if (parentId) {
-            // Post.
-            const post = Post.parse(body, event.getId(), event.getSender(), parentId);
+            // Post. The event API exposes a Date, we want the millis.
+            const post = Post.parse(body, event.getId(), event.getSender(), event.event.origin_server_ts, parentId);
             if (post) {
                 console.log("Got post:", post);
                 state.setPosts([post]);
@@ -37,9 +37,9 @@ export function roomMessage(client: any, event: any, room: any, toStartOfTimelin
             }
         } else {
             // Topic header.
-            const post = Post.parse(body, event.getId(), event.getSender());
+            const post = Post.parse(body, event.getId(), event.getSender(), event.event.origin_server_ts);
             if (post) {
-                const topic = new Topic(room.roomId, post.contents.body, post.postId)
+                const topic = Topic.fromPost(room.roomId, post);
                 console.log("Got topic:", topic);
                 state.setTopics([topic]);
             }

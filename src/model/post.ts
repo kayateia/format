@@ -4,6 +4,7 @@
 //
 
 import { Topic } from "./topic";
+import { DateTime } from "luxon";
 
 /*
 
@@ -54,6 +55,7 @@ export interface PostArgs {
     pendingTopic?: Topic;
     author: string;
     contents: PostContents | string;
+    timestamp?: DateTime;
 }
 
 // Represents information about a post on a topic.
@@ -68,12 +70,14 @@ export class Post {
 
     private authorId_: string;
     private contents_: PostContents;
+    private timestamp_: DateTime;
 
     constructor(args: PostArgs) {
         this.postId_ = args.postId;
         this.parentId_ = args.parentId;
         this.pendingTopic_ = args.pendingTopic;
         this.authorId_ = args.author;
+        this.timestamp_ = args.timestamp || DateTime.now();
 
         if (typeof args.contents === "string") {
             const json: SerializedPost = JSON.parse(args.contents);
@@ -123,6 +127,7 @@ export class Post {
     get pendingTopic() { return this.pendingTopic_; }
     get authorId() { return this.authorId_; }
     get contents() { return this.contents_; }
+    get timestamp() { return this.timestamp_; }
 
     get serialized() {
         return {
@@ -149,7 +154,7 @@ export class Post {
         }
     }
 
-    static parse(serialized: string, id: string, author: string, parentId?: string): Post | undefined {
+    static parse(serialized: string, id: string, author: string, timestamp: number, parentId?: string): Post | undefined {
         let json: SerializedPost;
         try {
             // Skip any quote line we were forced to put in.
@@ -172,6 +177,7 @@ export class Post {
             postId: id,
             parentId,
             author,
+            timestamp: DateTime.fromMillis(timestamp),
             contents: new PostContents(
                 json.body, json.topicId, json.bodyHtml
             )

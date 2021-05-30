@@ -6,22 +6,56 @@
 -->
 
 <template>
-  <div class="home">
-    <img alt="Vue logo" src="../assets/logo.png">
-    <HelloWorld msg="Welcome to Your Vue.js + TypeScript App"/>
-  </div>
+    <div class="home container">
+        <topic-view :topic="topic" :posts="posts"></topic-view>
+    </div>
 </template>
 
 <script lang="ts">
 
-import { Component, Vue } from "vue-property-decorator";
-import HelloWorld from "@/components/HelloWorld.vue"; // @ is an alias to /src
+import { Component, Prop, Vue } from "vue-property-decorator";
+import TopicView from "@/components/Topic.vue";
+import { Topic, current as currentState, Post } from "@/model";
 
 @Component({
-  components: {
-    HelloWorld,
-  },
+    components: {
+        TopicView
+    },
 })
-export default class Home extends Vue {}
+export default class Home extends Vue {
+    @Prop() topic: Topic | undefined;
+    @Prop() posts!: Post[];
+
+    constructor() {
+        super();
+
+        const state = currentState();
+        this.topic = state.getTopic(tid);
+        this.posts = state.getPostsByTopic(tid);
+        if (!this.topic) {
+            state.topicsUpdated.onUpdate((ts: string[]) => {
+                console.log("Home updating topics:", ts);
+                if (ts.filter(t => t === tid).length > 0) {
+                    this.topic = state.getTopic(tid);
+                }
+            });
+        }
+        state.postsUpdated.onUpdate((ps: string[]) => {
+            console.log("Home updating posts:", ps);
+            this.posts = state.getPostsByTopic(tid);
+        });
+    }
+}
 
 </script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped>
+
+.home {
+    padding-left: 2em;
+    padding-right: 2em;
+    padding-top: 2em;
+}
+
+</style>

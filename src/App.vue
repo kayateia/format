@@ -16,7 +16,16 @@
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-align: center;
+}
+
+.info {
+    color: #999;
+    font-size: 0.9em;
+}
+
+.info i {
+    color: #9a9;
+    font-weight: bold;
 }
 </style>
 
