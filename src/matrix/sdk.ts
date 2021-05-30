@@ -97,6 +97,9 @@ export class Matrix {
 
         this.client_ = client;
 
+        const state = currentState();
+        state.usersUpdated.onUpdate(users => Updaters.usersUpdated(client, users));
+
         console.log("starting sync");
         client.once("sync", (state:string , prevState: string, res: any) => {
             try {
@@ -116,7 +119,6 @@ export class Matrix {
         });
 
         console.log("processing queued posts");
-        const state = currentState();
         const poster = async () => {
             const posts = state.getAndClearPostQueue();
             try {

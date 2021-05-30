@@ -23,8 +23,8 @@ import { Topic, current as currentState, Post } from "@/model";
     },
 })
 export default class Home extends Vue {
-    @Prop() topic: Topic | undefined;
-    @Prop() posts!: Post[];
+    topic?: Topic | string = "";
+    posts: Post[] = [];
 
     constructor() {
         super();

@@ -52,7 +52,7 @@ export class Topic {
         return new Topic({
             categoryId: this.categoryId_,
             title: this.title_,
-            author: this.author_,
+            authorId: this.authorId_,
             timestamp: this.timestamp_,
             topicId
         });

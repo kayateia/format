@@ -8,8 +8,8 @@
 <template>
     <div class="container">
         <div class="postbox row align-items-start">
-            <div class="col col-md-3 col-12 order-9 userinfo">
-                <div class="userpic"><b>[userpic goes here]</b></div>
+            <div class="col col-md-3 col-12 order-md-9 userinfo">
+                <div class="userpic"><img :src="avatarUrl"/></div>
             </div>
             <div class="col col-md-9 col-12 content">
                 <p class="info"><i>{{ author }}</i> at <i>{{ timestamp }}</i></p>
@@ -45,6 +45,12 @@ export default class PostView extends Vue {
 
     get text() {
         return this.post.contents.body;
+    }
+
+    get avatarUrl() {
+        const state = currentState();
+        const user = state.getUser(this.post.authorId);
+        return user?.avatarUrl;
     }
 }
 
@@ -87,4 +93,10 @@ hr {
     height: 8em;
     border-style: dotted;
 }
+
+.userpic img {
+    width: 8em;
+    height: 8em;
+}
+
 </style>

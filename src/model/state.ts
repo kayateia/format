@@ -79,7 +79,7 @@ export class State {
         return this.userMap_.get(login);
     }
     setUsers(users: User[]): void {
-        if (users.filter(u => !!u.login).length > 0) {
+        if (users.filter(u => !u.login).length > 0) {
             throw new Error(`Unable to set multiple users, as some have no login: ${JSON.stringify(users, null, 4)}`);
         } else {
             for (const u of users) {

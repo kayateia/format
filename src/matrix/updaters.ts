@@ -5,14 +5,15 @@
 
 // This bridges from the SDK callbacks to updating our State.
 
-import { State, current as currentState, Post, PostContents, Topic } from "../model";
+import { current as currentState, Post, User, Topic, UserArgs } from "../model";
 import { EventType } from "./sdk";
+import sdk from "matrix-js-sdk";
 
 export function syncComplete(stateCode: string) {
     console.log("sync:", stateCode);
 }
 
-export function roomMessage(client: any, event: any, room: any, toStartOfTimeline: boolean) {
+export async function roomMessage(client: any, event: any, room: any, toStartOfTimeline: boolean) {
     console.log("received timeline event:", event, room, toStartOfTimeline);
     if (event.getType() === EventType.RoomMessage) {
         const state = currentState();
@@ -44,7 +45,62 @@ export function roomMessage(client: any, event: any, room: any, toStartOfTimelin
                 state.setTopics([topic]);
             }
         }
+
+        const userId = event.getSender();
+        let userInfo = state.getUser(userId);
+        if (!userInfo) {
+            userInfo = new User({
+                login: userId
+            });
+            state.setUsers([userInfo]);
+        }
     }
+}
+
+
+export async function usersUpdated(client: any, userIds: string[]): Promise<void> {
+    const state = currentState();
+
+    const querying: User[] = [];
+    for (const uid of userIds) {
+        const userInfo = state.getUser(uid);
+
+        if (!userInfo || userInfo.loading) {
+            continue;
+        }
+
+        userInfo.loading = true;
+        querying.push(userInfo);
+    }
+
+    if (!querying.length) {
+        return;
+    }
+
+    const queryPromises = querying.map(u => client.getProfileInfo(u.login));
+    const queryResults = await Promise.all(queryPromises);
+
+    const toSet: User[] = [];
+    for (const u of querying) {
+        const r = queryResults.shift();
+        console.log("results:", u, r);
+
+        const url = (sdk as any).getHttpUriForMxc(
+            state.homeserver!.url,
+            r.avatar_url,
+            256, 256,
+            "scale",
+            /* allow direct links */ false
+        );
+
+        const userInfo = u.withUpdates({
+            displayName: r.displayname,
+            avatarMxc: r.avatar_url,
+            avatarUrl: url
+        });
+        toSet.push(userInfo);
+    }
+    state.setUsers(toSet);
 }
 
 export async function sendQueuedPosts(client: any, posts: Post[]): Promise<void> {
