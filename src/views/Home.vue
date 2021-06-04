@@ -6,44 +6,37 @@
 -->
 
 <template>
-    <div class="home container">
-        <topic-view :topic="topic" :posts="posts"></topic-view>
+    <div class="container">
+        <category v-for="c in categories" :category="c" :key="c.roomId" :categoryLink="catlink(c)"></category>
     </div>
 </template>
 
 <script lang="ts">
 
 import { Component, Prop, Vue } from "vue-property-decorator";
-import TopicView from "@/components/Topic.vue";
-import { Topic, current as currentState, Post } from "@/model";
+import { Category, currentState } from "@/model";
+import CategoryComponent from "@/components/Category.vue";
 
 @Component({
     components: {
-        TopicView
-    },
+        Category: CategoryComponent
+    }
 })
 export default class Home extends Vue {
-    topic?: Topic | string = "";
-    posts: Post[] = [];
+    categories: Category[] = [];
 
     constructor() {
         super();
 
         const state = currentState();
-        this.topic = state.getTopic(tid);
-        this.posts = state.getPostsByTopic(tid);
-        if (!this.topic) {
-            state.topicsUpdated.onUpdate((ts: string[]) => {
-                console.log("Home updating topics:", ts);
-                if (ts.filter(t => t === tid).length > 0) {
-                    this.topic = state.getTopic(tid);
-                }
-            });
-        }
-        state.postsUpdated.onUpdate((ps: string[]) => {
-            console.log("Home updating posts:", ps);
-            this.posts = state.getPostsByTopic(tid);
+        state.categoriesStream.subscribe(cs => {
+            this.categories = cs;
+            console.log("Home updated:", this.categories);
         });
+    }
+
+    catlink(c: Category): string {
+        return `/cat/${c.roomId}`;
     }
 }
 
@@ -51,11 +44,4 @@ export default class Home extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
-
-.home {
-    padding-left: 2em;
-    padding-right: 2em;
-    padding-top: 2em;
-}
-
 </style>

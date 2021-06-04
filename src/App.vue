@@ -6,16 +6,23 @@
 -->
 
 <template>
-  <div id="app">
-    <Nav/>
-  </div>
+    <div id="app">
+        <Nav/>
+        <div id="contained">
+            <router-view/>
+        </div>
+    </div>
 </template>
 
 <style>
 #app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+    font-family: Avenir, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+#contained {
+    padding: 2em 2em 2em 2em;
 }
 
 .info {
@@ -35,9 +42,9 @@ import Nav from "@/components/Nav.vue"; // @ is an alias to /src
 import { Component, Vue } from 'vue-property-decorator';
 
 @Component({
-  components: {
-    Nav,
-  },
+    components: {
+        Nav
+    }
 })
 export default class App extends Vue { }
 </script>

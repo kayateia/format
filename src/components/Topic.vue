@@ -7,23 +7,25 @@
 
 <template>
     <div class="col-12">
-        <h1>{{ title }}</h1>
+        <h1><router-link :to="topicLink">{{ title }}</router-link></h1>
         <p class="info">Started by <i>{{ author }}</i> at <i>{{ timestamp }}</i></p>
-        <post-view v-for="p in posts" :key="p.postId" :post="p"></post-view>
+        <post v-for="p in posts" :key="p.postId" :post="p"></post>
     </div>
 </template>
 
 <script lang="ts">
 
 import { Topic, Post } from "@/model";
-import PostView from "@/components/Post.vue";
+import PostComponent from "@/components/Post.vue";
 import { Component, Prop, Vue } from "vue-property-decorator";
 
 @Component({
-  components: {
-    PostView
-  },
-})export default class TopicView extends Vue {
+    components: {
+        Post: PostComponent
+    },
+})
+export default class TopicComponent extends Vue {
+    @Prop() private topicLink: string | undefined;
     @Prop() private topic: Topic | undefined;
     @Prop() private posts: Post[] | undefined;
 

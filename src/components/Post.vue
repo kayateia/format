@@ -22,13 +22,16 @@
 
 <script lang="ts">
 
-import { Post, current as currentState } from "@/model";
+import { Post, currentState } from "@/model";
 import { Component, Prop, Vue } from "vue-property-decorator";
 
 @Component
-export default class PostView extends Vue {
+export default class PostComponent extends Vue {
     @Prop() private post!: Post;
 
+/*
+roomReadMarker
+*/
     get author() {
         return this.post.authorId;
     }

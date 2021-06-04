@@ -4,61 +4,33 @@
 //
 
 import sdk from "matrix-js-sdk";
+import { zip } from "rxjs";
 
-// Hopefully they will eventually export this.
-import { EventType } from "matrix-js-sdk/src/@types/event";
-export * from "matrix-js-sdk/src/@types/event";
-
-import { State, current as currentState, Homeserver, User } from "../model";
+import { State, currentState, Homeserver, User } from "../model";
 import * as Updaters from "./updaters";
 
 export class Matrix {
     // There's no typing for this currently.
     private client_: any;
-    private homeserver_: Homeserver | undefined;
-    private us_: User | undefined;
 
     constructor() {
         const state = currentState();
-        if (state.homeserver) {
-            this.homeserver_ = state.homeserver;
-        }
-        if (state.us) {
-            this.us_ = state.us;
-        }
-        if (this.homeserver_ && this.us_ && this.us_.accessToken) {
-            this.connect();
-        }
-        this.hookLoginInfoChanged_(state);
-    }
-
-    private hookLoginInfoChanged_(state: State) {
-        state.homeserverChanged.onUpdate(h => {
-            // We don't really allow switching servers without a logout.
-            if (!this.client_) {
-                this.homeserver_ = h;
-                if (this.us_ && this.us_.accessToken) {
-                    this.connect();
-                }
-            }
-        });
-        state.usChanged.onUpdate(us => {
-            // TODO Should allow logout.
-            if (!this.client_) {
-                this.us_ = us;
-                if (this.homeserver_ && this.us_ && this.us_.accessToken) {
-                    this.connect();
+        zip(state.homeserverChanged, state.usChanged).subscribe(hu => {
+            const homeserver = hu[0];
+            const us = hu[1];
+            if (homeserver && us && us.accessToken) {
+                this.connect(homeserver, us);
+            } else {
+                if (this.client_) {
+                    this.client_.close();
+                    this.client_ = undefined;
                 }
             }
         });
     }
 
-    async getToken(login: string, password: string): Promise<string> {
-        if (!this.homeserver_) {
-            throw new Error("No homeserver is set, can't get token");
-        }
-
-        const url = this.homeserver_.url;
+    async getToken(homeserver: Homeserver, login: string, password: string): Promise<string> {
+        const url = homeserver.url;
         const client = sdk.createClient(url);
         const regResult = await client.login("m.login.password", {
             user: login,
@@ -69,12 +41,11 @@ export class Matrix {
         return regResult.accessToken;
     }
 
-    async connect(): Promise<void> {
+    async connect(homeserver: Homeserver, user: User): Promise<void> {
         // Do we have an access token?
-        const user = this.us_;
-        const url = this.homeserver_?.url;
+        const url = homeserver.url;
 
-        if (!user || !user.accessToken) {
+        if (!user.accessToken) {
             throw new Error("Can't connect: there are no user credentials.");
         }
         if (!url) {
@@ -98,7 +69,7 @@ export class Matrix {
         this.client_ = client;
 
         const state = currentState();
-        state.usersUpdated.onUpdate(users => Updaters.usersUpdated(client, users));
+        state.usersUpdated.subscribe(users => Updaters.usersUpdated(client, users));
 
         console.log("starting sync");
         client.once("sync", (state:string , prevState: string, res: any) => {
@@ -130,6 +101,6 @@ export class Matrix {
             }
         };
         await poster();
-        state.postQueueUpdated.onUpdate(poster);
+        state.postQueueUpdated.subscribe(poster);
     }
 }

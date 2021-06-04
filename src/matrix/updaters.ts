@@ -5,9 +5,11 @@
 
 // This bridges from the SDK callbacks to updating our State.
 
-import { current as currentState, Post, User, Topic, UserArgs } from "../model";
-import { EventType } from "./sdk";
+import { currentState, Post, User, Topic, UserArgs } from "../model";
 import sdk from "matrix-js-sdk";
+
+// Hopefully they will eventually export this.
+import { EventType } from "matrix-js-sdk/src/@types/event";
 
 export function syncComplete(stateCode: string) {
     console.log("sync:", stateCode);
